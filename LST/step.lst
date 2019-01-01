@@ -1,0 +1,179 @@
+C51 COMPILER V9.01   STEP                                                                  09/15/2018 16:33:22 PAGE 1   
+
+
+C51 COMPILER V9.01, COMPILATION OF MODULE STEP
+OBJECT MODULE PLACED IN .\Output\step.obj
+COMPILER INVOKED BY: C:\Keil_v4\C51\BIN\C51.EXE Code\step.c LARGE BROWSE INCDIR(.\Include;.\wifi;.\Code) DEFINE(FOSC_160
+                    -000) DEBUG OBJECTEXTEND PRINT(.\LST\step.lst) OBJECT(.\Output\step.obj)
+
+line level    source
+
+   1          #include "N76E003.h"
+   2          #include "SFR_Macro.h"
+   3          #include "common.h"
+   4          #include "struct.h"
+   5          #define MAINSTEP
+   6          #include "step.h"
+   7          
+   8          
+   9          data volatile unsigned int yposition =30000;
+  10          data volatile unsigned int xposition =30000;
+  11          
+  12          
+  13          const unsigned char  sintable[] ={0,2,3,4,6,7,7,8};
+  14          const unsigned char  costable[] ={8,8,7,7,6,4,3,2};     
+  15          
+  16          void ymove(signed int *n )
+  17          {
+  18   1        unsigned char index ;
+  19   1        index = yposition%32;
+  20   1        switch (index>>3)
+  21   1        {
+  22   2              case 0:
+  23   2              pwmya =  costable[index]  ;
+  24   2              pwmyb =  sintable[index]  ;
+  25   2              pwmyc = 0;
+  26   2              pwmyd = 0 ;
+  27   2              break;
+  28   2      
+  29   2              case 1:
+  30   2              pwmya =  0;
+  31   2              pwmyb =  costable[index-8] ;
+  32   2              pwmyc =  sintable[index-8] ;
+  33   2              pwmyd = 0;
+  34   2              break;
+  35   2      
+  36   2              case 2:
+  37   2              pwmya = 0;
+  38   2              pwmyb = 0;
+  39   2              pwmyc = costable[index-16];
+  40   2              pwmyd = sintable[index-16] ;
+  41   2              break;
+  42   2      
+  43   2              case 3:
+  44   2              pwmya =  sintable[index-24] ;
+  45   2              pwmyb =  0;
+  46   2              pwmyc =  0;
+  47   2              pwmyd =  costable[index-24] ;
+  48   2              break;
+  49   2        }
+  50   1      
+  51   1         if(*n>0)
+  52   1         {
+  53   2                (*n)--;
+  54   2                 yposition--;
+C51 COMPILER V9.01   STEP                                                                  09/15/2018 16:33:22 PAGE 2   
+
+  55   2         } 
+  56   1         else if(*n<0)
+  57   1         {
+  58   2                 (*n)++;
+  59   2                 yposition++;
+  60   2         }
+  61   1      
+  62   1      }
+  63          
+  64          void xmove(signed int *n )
+  65          {
+  66   1        unsigned char index ;
+  67   1        index = xposition%32;
+  68   1        switch (index>>3)
+  69   1        {
+  70   2              case 0:
+  71   2              pwmxa =  costable[index]  ;
+  72   2              pwmxb =  sintable[index]  ;
+  73   2              pwmxc = 0;
+  74   2              pwmxd = 0 ;
+  75   2              break;
+  76   2      
+  77   2              case 1:
+  78   2              pwmxa =  0;
+  79   2              pwmxb =  costable[index-8] ;
+  80   2              pwmxc =  sintable[index-8] ;
+  81   2              pwmxd = 0;
+  82   2              break;
+  83   2      
+  84   2              case 2:
+  85   2              pwmxa = 0;
+  86   2              pwmxb = 0;
+  87   2              pwmxc = costable[index-16];
+  88   2              pwmxd = sintable[index-16] ;
+  89   2              break;
+  90   2      
+  91   2              case 3:
+  92   2              pwmxa =  sintable[index-24] ;
+  93   2              pwmxb =  0;
+  94   2              pwmxc =  0;
+  95   2              pwmxd =  costable[index-24] ;
+  96   2              break;
+  97   2        }
+  98   1      
+  99   1         if(*n > 0)
+ 100   1         {
+ 101   2                 (*n)--;
+ 102   2                xposition--;
+ 103   2         } 
+ 104   1         else if(*n < 0)
+ 105   1         {
+ 106   2                 (*n)++;
+ 107   2                 xposition++;
+ 108   2         }
+ 109   1      }
+ 110          
+ 111          void xymoveT(hstep *hs)
+ 112          {
+ 113   1              nxspeed =  hs->xspeed;
+ 114   1              nyspeed =  hs->yspeed ;
+ 115   1              nxcounter =0;
+ 116   1              nycounter =0;
+C51 COMPILER V9.01   STEP                                                                  09/15/2018 16:33:22 PAGE 3   
+
+ 117   1              bxflag=1;
+ 118   1              byflag =1;
+ 119   1      
+ 120   1              while( hs->xdes!=0 ||  hs->ydes!=0)
+ 121   1              {
+ 122   2      
+ 123   2                      if(bxflag==1)
+ 124   2                      {
+ 125   3                              bxflag =0;
+ 126   3                              nxcounter=0;
+ 127   3                              
+ 128   3                              if( hs->xdes != 0)
+ 129   3                              {
+ 130   4                        xmove(&hs->xdes);
+ 131   4                              }
+ 132   3              
+ 133   3                              
+ 134   3                      }
+ 135   2                      
+ 136   2                      if(byflag ==1)
+ 137   2                      {
+ 138   3                              byflag = 0;
+ 139   3                              nycounter=0;
+ 140   3                              
+ 141   3                              if( hs->ydes  != 0)
+ 142   3                              {
+ 143   4                        ymove(& hs->ydes);
+ 144   4      
+ 145   4                              }                                       
+ 146   3      
+ 147   3                      }
+ 148   2      
+ 149   2              }
+ 150   1      }
+ 151          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    569    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =     20       3
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     12    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      2    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

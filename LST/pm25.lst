@@ -1,0 +1,102 @@
+C51 COMPILER V9.01   PM25                                                                  06/19/2018 19:21:41 PAGE 1   
+
+
+C51 COMPILER V9.01, COMPILATION OF MODULE PM25
+OBJECT MODULE PLACED IN .\Output\pm25.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE Code\pm25.c LARGE BROWSE INCDIR(.\Include;.\wifi;.\Code) DEFINE(FOSC_160000
+                    -) DEBUG OBJECTEXTEND PRINT(.\LST\pm25.lst) OBJECT(.\Output\pm25.obj)
+
+line level    source
+
+   1          #include "N76E003.h"
+   2          #include "SFR_Macro.h"
+   3          #include "Common.h"
+   4          #include "Delay.h"
+   5          #include "pm25.h"
+   6          
+   7          UINT8 P25Status = 0;                                                                    //status check
+   8          UINT16 P25LowCnt = 0;                                                   //low level count
+   9          extern volatile UINT16 comp25  ;
+  10          
+  11          UINT8 halfflag = 0;
+  12          UINT16 halfcounter = 0;
+  13          
+  14          
+  15                          
+  16          void InitTime0(void)       //set 100us timer; //sys 1/12;
+  17          {
+  18   1              TMOD &= 0xf0;                   
+  19   1              TMOD |= 0x02;                   
+  20   1              TL0 = 0;
+  21   1              TH0 = (256-133);               
+  22   1              ET0 = 1;                                              
+  23   1              TR0 = 1;                                
+  24   1      }
+  25          
+  26          
+  27          
+  28          void Timer0_ISR(void) interrupt 1
+  29          {
+  30   1              TF0 = 0;
+  31   1              if(halfcounter<5000)
+  32   1              halfcounter++;
+  33   1              else
+  34   1              halfflag = 1;
+  35   1      
+  36   1      
+  37   1              if(P25Status == 0)
+  38   1              {
+  39   2                       if(pm25 ==1)
+  40   2                       {
+  41   3                               if(pm25 ==1)
+  42   3                               {
+  43   4                                      P25Status =1;
+  44   4                               }
+  45   3                       }
+  46   2              }
+  47   1              if(P25Status ==1)
+  48   1              {
+  49   2                      if(pm25 ==0)
+  50   2                      {
+  51   3                              if(pm25 ==0)
+  52   3                              {
+  53   4                                      P25Status = 2;
+  54   4                              }
+C51 COMPILER V9.01   PM25                                                                  06/19/2018 19:21:41 PAGE 2   
+
+  55   3                      }
+  56   2              }       
+  57   1              
+  58   1              if(P25Status == 2)
+  59   1              {
+  60   2                      P25LowCnt++;
+  61   2                      if(pm25 ==1)
+  62   2                      {
+  63   3                              if(pm25 ==1)
+  64   3                              {
+  65   4                                       P25Status = 0;
+  66   4                                       comp25 = P25LowCnt /10;
+  67   4                                       if(comp25>999)
+  68   4                                       comp25 = 999;
+  69   4                                       P25LowCnt = 0;
+  70   4                      
+  71   4                               
+  72   4                              }
+  73   3                      }
+  74   2              }
+  75   1      
+  76   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    213    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =      6    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

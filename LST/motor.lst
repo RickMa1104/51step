@@ -1,0 +1,382 @@
+C51 COMPILER V9.01   MOTOR                                                                 09/13/2018 15:50:03 PAGE 1   
+
+
+C51 COMPILER V9.01, COMPILATION OF MODULE MOTOR
+OBJECT MODULE PLACED IN .\Output\motor.obj
+COMPILER INVOKED BY: C:\Keil_v4\C51\BIN\C51.EXE Code\motor.c LARGE BROWSE INCDIR(.\Include;.\wifi;.\Code) DEFINE(FOSC_16
+                    -0000) DEBUG OBJECTEXTEND PRINT(.\LST\motor.lst) OBJECT(.\Output\motor.obj)
+
+line level    source
+
+   1          #include "N76E003.h"
+   2          #include "SFR_Macro.h"
+   3          #include "Function_define.h"
+   4          #include "Common.h"
+   5          #include "delay.h"
+   6          #include "motor.h"
+   7          #include "light.h"
+   8          #include "wifi.h"
+   9          
+  10          
+  11          UINT8  S1CNT=0;
+  12          UINT8  UART1_BUFFER[32];
+  13          UINT8  S1FLAG =0;
+  14          volatile signed int sbuff =0;
+  15          extern UINT8 mwind;
+  16          extern bit resetflag;
+  17          volatile signed int code wind3s _at_ 0x4700 ;
+  18          volatile signed int code wind4s _at_ 0x4780 ;
+  19          
+  20          extern volatile unsigned int code runtim ;
+  21          extern volatile unsigned char code lifflg;
+  22          extern volatile    signed int code wind7p;
+  23          extern volatile    signed int code wind7o;
+  24          UINT8 trytimes =0;
+  25          extern bit bunreset;
+  26          UINT16 xdata u16flag;
+  27          extern bit openop;
+  28          extern UINT8 openstat;
+  29          extern UINT8 resetstat;
+  30          UINT8 resetcounter=0;
+  31          UINT16 resettorque[20];
+  32          UINT32 torquesum=0;
+  33          extern volatile signed char comfilter;
+  34          extern bit startreset;
+  35          extern bit bbac;
+  36          extern bit bfilterfault;
+  37          extern bit lifeflag ;  
+  38          extern bit checklife ;
+  39          
+  40          
+  41          
+  42          void SerialPort1_ISR(void) interrupt 15 
+  43          {
+  44   1          if (RI_1==1) 
+  45   1          {                                       /* if reception occur */
+  46   2              clr_RI_1;                             /* clear reception flag for next reception */
+  47   2              UART1_BUFFER[S1CNT] = SBUF_1;
+  48   2              
+  49   2                      if(UART1_BUFFER[S1CNT]==0X55)
+  50   2                      {
+  51   3                       S1FLAG = 1;
+  52   3                      }
+  53   2      
+  54   2                      if(S1FLAG ==1&&S1CNT<31)
+C51 COMPILER V9.01   MOTOR                                                                 09/13/2018 15:50:03 PAGE 2   
+
+  55   2                      {
+  56   3                      S1CNT++;
+  57   3                      }
+  58   2      
+  59   2          }
+  60   1          if(TI_1==1)
+  61   1          {
+  62   2              clr_TI_1;                             /* if emission occur */
+  63   2          }
+  64   1      }
+  65          unsigned char ComputeSizeCheck(unsigned char sz) 
+  66          { 
+  67   1              if(!(sz & 0x01))
+  68   1              {sz^= 0xe0;}
+  69   1              if(!(sz & 0x02))
+  70   1              {sz ^= 0xd0;}
+  71   1              if(!(sz &0x04))
+  72   1              {sz ^= 0xb0;} 
+  73   1              if(!(sz & 0x08))
+  74   1              {sz^= 0x70;}
+  75   1              return sz;
+  76   1      }
+  77          
+  78          unsigned short CRCBody(unsigned short crc, unsigned char dat) 
+  79          { 
+  80   1          int i;
+  81   1          crc ^= dat << 8;
+  82   1              for(i = 0; i < 8; i++) 
+  83   1              {
+  84   2                       if(crc & 0x8000)
+  85   2                      {
+  86   3                      crc <<= 1; crc ^=       0x3613;
+  87   3                      } 
+  88   2                      else 
+  89   2                      {
+  90   3                      crc <<= 1;
+  91   3                      }
+  92   2              }
+  93   1          return crc;
+  94   1      }
+  95           unsigned short ComputeCRC(unsigned char *buffer, int length)
+  96            { 
+  97   1                int i;
+  98   1                unsigned short crc = 0xffff; 
+  99   1                for(i = 0; i <length; i++) 
+ 100   1                {
+ 101   2                 crc = CRCBody(crc, buffer[i]);
+ 102   2                }
+ 103   1                return crc;
+ 104   1       }
+ 105          
+ 106           void speedmotor(UINT8 speed)
+ 107           {
+ 108   1               UINT8 scommand[8] ={0x55,0x01,0x94,0x22};
+ 109   1               UINT16 crc;
+ 110   1               UINT8 i;
+ 111   1               switch(speed)
+ 112   1               {
+ 113   2                case(5): scommand[4] = 700>>8; scommand[5] = 700;  break;
+ 114   2                case(4): scommand[4] = 1000>>8; scommand[5] = 1000;  break;
+ 115   2                case(3): scommand[4] = 800>>8; scommand[5] = 800;  break;
+ 116   2                case(2): scommand[4] = 600>>8; scommand[5] = 600;  break;
+C51 COMPILER V9.01   MOTOR                                                                 09/13/2018 15:50:03 PAGE 3   
+
+ 117   2                case(1): scommand[4] = 500>>8; scommand[5] = 500;  break;
+ 118   2                default: break;
+ 119   2               }
+ 120   1               
+ 121   1               
+ 122   1               crc = ComputeCRC(scommand,6);
+ 123   1               scommand[6] = crc>>8;
+ 124   1               scommand[7] = crc;
+ 125   1               ET0 = 0;
+ 126   1                for(i=0;i<8;i++)
+ 127   1               {
+ 128   2                Send_Data_To_UART1(scommand[i]);
+ 129   2               }
+ 130   1               ET0 = 1;
+ 131   1       }
+ 132          
+ 133          void startsignal()
+ 134          {
+ 135   1               UINT8 scommand[6] ={0x55,0x01,0x88,0xF0,0xCF,0xD3};
+ 136   1               UINT8 i;
+ 137   1               if(P05)
+ 138   1               {
+ 139   2                       P05 = 0;  //15V0 ON
+ 140   2                       Timer2_Delay500us(1000);
+ 141   2               }
+ 142   1               ET0 = 0;
+ 143   1               for(i=0;i<6;i++)
+ 144   1               {
+ 145   2                Send_Data_To_UART1(scommand[i]);
+ 146   2               }
+ 147   1               ET0 = 1;
+ 148   1      }
+ 149          void startmotor(UINT8 speed)
+ 150          {
+ 151   1      
+ 152   1       startsignal();
+ 153   1       speedmotor(speed);
+ 154   1      
+ 155   1      }
+ 156          //void starttorque(UINT8 torque)
+ 157          //{
+ 158          //   startsignal();
+ 159          //   torquemotor(torque);
+ 160          //}
+ 161          void stopmotor()
+ 162          {
+ 163   1      
+ 164   1       UINT8 scommand[6] ={0x55,0x01,0x8a,0xF0,0x2d,0x0a};
+ 165   1       UINT8 i;
+ 166   1               ET0 = 0;
+ 167   1        for(i=0;i<6;i++)
+ 168   1       {
+ 169   2        Send_Data_To_UART1(scommand[i]);
+ 170   2       }
+ 171   1               ET0 = 1;
+ 172   1        Timer2_Delay500us(10);
+ 173   1        P05 = 1;      //15V0 OFF
+ 174   1      }
+ 175          void getspeed()
+ 176          {
+ 177   1       UINT8 i;
+ 178   1       UINT16 crc;
+C51 COMPILER V9.01   MOTOR                                                                 09/13/2018 15:50:03 PAGE 4   
+
+ 179   1       UINT8 scommand[6] ={0x55,0x01,0xa4,0xf0};
+ 180   1       crc = ComputeCRC(scommand,4);
+ 181   1       scommand[4] = crc>>8;
+ 182   1       scommand[5] = crc;
+ 183   1               ET0 = 0;
+ 184   1        for(i=0;i<6;i++)
+ 185   1       {
+ 186   2        Send_Data_To_UART1(scommand[i]);
+ 187   2       }
+ 188   1               ET0 = 1;
+ 189   1      }
+ 190          void gettorque()
+ 191          {
+ 192   1        UINT8 i;
+ 193   1        UINT16 crc;
+ 194   1        UINT8 scommand[6] ={0x55,0x01,0xa0,0xf0};
+ 195   1        crc = ComputeCRC(scommand,4);
+ 196   1        scommand[4] = crc>>8;
+ 197   1        scommand[5] = crc;
+ 198   1        for(i=0;i<6;i++)
+ 199   1        {
+ 200   2        Send_Data_To_UART1(scommand[i]);
+ 201   2        }
+ 202   1      }
+ 203          void showreply(UINT8 s1num)
+ 204          {
+ 205   1      
+ 206   1         if(S1CNT>s1num)
+ 207   1         {
+ 208   2                 switch(UART1_BUFFER[2])
+ 209   2                 {
+ 210   3                       case(0xa5):sbuff = UART1_BUFFER[4];sbuff = (sbuff<<8)|UART1_BUFFER[5];break;
+ 211   3                       case(0xa1):sbuff = UART1_BUFFER[4];sbuff = (sbuff<<8)|UART1_BUFFER[5];break;
+ 212   3                       default:break;
+ 213   3                 }
+ 214   2                 S1FLAG =0;
+ 215   2                 S1CNT = 0;
+ 216   2              }
+ 217   1      }
+ 218          void resetmotor()
+ 219          {
+ 220   1          switch(resetstat)
+ 221   1              {
+ 222   2      
+ 223   2                      case(1):showreply(6);openop=0;startmotor(5);resetstat =2;break; //writepm25(0,0,1);fscreen();
+ 224   2                      case(2):showreply(15);resetstat =3;break;
+ 225   2                      case(3):showreply(8);getspeed();if(sbuff>698&&sbuff<701){resetstat =4;}break;
+ 226   2                      case(4):showreply(8);gettorque();if(sbuff>0&&sbuff<400){resetstat =5;resetcounter=0;torquesum=0;}break;
+ 227   2                      case(5):showreply(8);gettorque();if(resetcounter<20){torquesum +=sbuff;resetcounter++; }else{resetstat=6
+             -;} break;
+ 228   2                      case(6):sbuff = torquesum/20;codeword(0x4600,sbuff);codeword(0x4680,sbuff);codebyte(0x4480,0x55);resetst
+             -at=7; break;           //wind7o,wind7p,reflag;
+ 229   2                      case(7):if(sbuff!=wind7p||sbuff!=wind7o){codeword(0x4600,sbuff);codeword(0x4680,sbuff);}resetstat=8;brea
+             -k;
+ 230   2                      case(8):startmotor(3);resetstat=9;break;
+ 231   2                      case(9):if(S1CNT>15){showreply(15);resetstat =10;}break;
+ 232   2                      case(10):showreply(8);getspeed();if(sbuff>798&&sbuff<801){resetstat =11;}break;
+ 233   2                      case(11):showreply(8);gettorque();if(sbuff>0&&sbuff<800){resetstat =12;}break;
+ 234   2                      case(12):codeword(0x4700,sbuff);resetstat =13;break;      //wind3
+ 235   2                      case(13):startmotor(4);resetstat=14;break;
+ 236   2                      case(14):if(S1CNT>6){showreply(15);resetstat =15;}break;
+ 237   2                      case(15):showreply(8);getspeed();if(sbuff>999&&sbuff<1001){resetstat =16;}break;
+C51 COMPILER V9.01   MOTOR                                                                 09/13/2018 15:50:03 PAGE 5   
+
+ 238   2                      case(16):showreply(8);gettorque();if(sbuff>0&&sbuff<900){resetstat =17;}break;
+ 239   2                      case(17):codeword(0x4780,sbuff); codeword(0x4580,0);  codebyte(0x4400,0);resetstat=18;  break;   //wind4,
+             -runtim,lifflag;
+ 240   2                      case(18):comfilter =100; bunreset = 0;startreset= 0;filter(0);mcu_dp_value_update(DPID_FILTER,100);start
+             -motor(mwind);resetstat=19;break;  //writepm25(0,1,7); fscreen();
+ 241   2                      case(19):showreply(6);resetstat=20;break;
+ 242   2                      default:break;
+ 243   2              }       
+ 244   1      
+ 245   1      }
+ 246          void filtercurrent()
+ 247          {
+ 248   1         switch(openstat)
+ 249   1         {
+ 250   2         case(1):showreply(6);startmotor(5);openstat =2;break;        // writepm25(0,0,1);fscreen();
+ 251   2         case(2):showreply(15);openstat =3;break;
+ 252   2         case(3):showreply(8);getspeed();if(sbuff>698&&sbuff<701){openstat =4;}break;
+ 253   2         case(4):showreply(8);gettorque();if(sbuff>0&&sbuff<230){openstat =5;resetcounter=0;torquesum=0;}break;
+ 254   2         case(5):showreply(8);gettorque();if(resetcounter<20){torquesum +=sbuff;resetcounter++; }else{openstat=6
+             -;} break;
+ 255   2         case(6):sbuff = torquesum/20;openstat=7;break;        //writepm25(sbuff/100,sbuff/10%10,sbuff%10);writetem(wi
+             -nd7p/100,wind7p/10%10);
+ 256   2         case(7):if(sbuff>=wind7p) sbuff = wind7p;else {if(((wind7p-sbuff)*100/(34*wind7o/100))>8)bfilterfault =
+             - 1;codeword(0x4680,sbuff);}openstat = 8;break;
+ 257   2         case(8):if(sbuff!=wind7p){codeword(0x4680c,sbuff);}openstat = 9;break;                                                                                                               
+ 258   2         case(9):     if(sbuff<0x55)comfilter = 0;else{comfilter = (sbuff-wind7o)*100/(34*wind7o/100)+100; if(comfil
+             -ter>100) comfilter =100;if(comfilter<0)comfilter =0;}openstat=10;break;                                                                                                               
+ 259   2         case(10):checklife = lifeflag;if(runtim>2499&&comfilter>30)lifeflag = 1;     if(checklife != lifeflag) {cod
+             -ebyte(0x4500,comfilter);codebyte(0x4400,0x55);}openstat=11;break;
+ 260   2         case(11):if(comfilter<30)bfilterfault = 1;mcu_dp_value_update(DPID_FILTER,comfilter);startmotor(mwind);
+             -openstat=12;break;                                                                                                                                                    
+ 261   2         case(12):openop = 0;showreply(6);filter(0);openstat = 13; break;
+ 262   2         default:break;
+ 263   2         }
+ 264   1      
+ 265   1      }
+ 266          
+ 267          void Trigger_IAP(void)
+ 268          {   
+ 269   1          TA = 0xAA;
+ 270   1              TA = 0x55;
+ 271   1              IAPTRG |= 0x01;                                                                                                                                 //trigger IAP
+ 272   1          if((CHPCON&0x40)==0x40)             // if fail flag is set, toggle error LED and IAP stop
+ 273   1              clr_IAPFF;
+ 274   1      
+ 275   1      }
+ 276          
+ 277          void openiap()
+ 278          {
+ 279   1          clr_EA ;
+ 280   1              TA = 0xAA; //CHPCON is TA protected
+ 281   1              TA = 0x55;
+ 282   1              CHPCON |= 0x01; //IAPEN = 1, enable IAP mode
+ 283   1              TA = 0xAA; //IAPUEN is TA protected
+ 284   1              TA = 0x55;
+ 285   1              IAPUEN |= 0x01; //APUEN = 1, enable APROM update
+ 286   1              set_EA ;
+ 287   1      }
+ 288          void closeiap()
+ 289          {
+ 290   1          clr_EA;
+ 291   1              TA = 0xAA; //IAPUEN is TA protected
+C51 COMPILER V9.01   MOTOR                                                                 09/13/2018 15:50:03 PAGE 6   
+
+ 292   1              TA = 0x55;
+ 293   1              IAPUEN &= ~0x01; //APUEN = 0, disable APROM update
+ 294   1              TA = 0xAA; //CHPCON is TA protected
+ 295   1              TA = 0x55;
+ 296   1              CHPCON &= ~0x01;
+ 297   1              set_EA;
+ 298   1      }
+ 299          
+ 300          void erasepage(UINT16 addr1)
+ 301          {
+ 302   1          clr_EA;
+ 303   1              IAPCN = 0x22; // PAGE_ERASE_AP;
+ 304   1              IAPAH = addr1>>8;
+ 305   1              IAPAL = addr1;
+ 306   1              IAPFD = 0xFF;
+ 307   1          Trigger_IAP();
+ 308   1              set_EA;
+ 309   1      
+ 310   1      }
+ 311          void codeword8(UINT16 addr1,UINT8 data1)
+ 312          {   
+ 313   1          clr_EA;
+ 314   1              IAPCN = 0x21; // BYTE_PROGRAM_AP
+ 315   1              IAPAH = addr1>>8;
+ 316   1              IAPAL = addr1;
+ 317   1              IAPFD = data1;
+ 318   1              Trigger_IAP();
+ 319   1              set_EA;
+ 320   1      }
+ 321          
+ 322          void codeword(UINT16 addr1,UINT16 data1)
+ 323          {       
+ 324   1              openiap();
+ 325   1              erasepage(addr1);
+ 326   1              codeword8(addr1,data1>>8);
+ 327   1              codeword8((addr1+1),data1);
+ 328   1              closeiap();
+ 329   1      
+ 330   1      }
+ 331          void codebyte(UINT16 addr1,UINT8 data1)
+ 332          {
+ 333   1              openiap();
+ 334   1              erasepage(addr1);
+ 335   1              codeword8(addr1,data1);
+ 336   1              closeiap();
+ 337   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   2630    ----
+   CONSTANT SIZE    =     32    ----
+   XDATA SIZE       =     84      50
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

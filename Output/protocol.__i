@@ -1,0 +1,1 @@
+"wifi\protocol.c" LARGE BROWSE INCDIR(.\Include;.\wifi;.\Code) DEFINE (FOSC_160000) DEBUG OBJECTEXTEND PRINT(.\LST\protocol.lst) OBJECT(.\Output\protocol.obj)

@@ -1,0 +1,688 @@
+C51 COMPILER V9.01   PROTOCOL                                                              06/22/2018 20:35:27 PAGE 1   
+
+
+C51 COMPILER V9.01, COMPILATION OF MODULE PROTOCOL
+OBJECT MODULE PLACED IN .\Output\protocol.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE wifi\protocol.c LARGE BROWSE INCDIR(.\Include;.\wifi;.\Code) DEFINE(FOSC_16
+                    -0000) DEBUG OBJECTEXTEND PRINT(.\LST\protocol.lst) OBJECT(.\Output\protocol.obj)
+
+line level    source
+
+   1          /****************************************Copyright (c)*************************
+   2          **                               版权所有 (C), 2015-2020, 涂鸦科技
+   3          **
+   4          **                                 http://www.tuya.com
+   5          **
+   6          
+   7          **-----------------------------------------------------------------------------
+   8          ******************************************************************************/
+   9          
+  10          #include "wifi.h"
+  11          #include "touch.h"
+  12          #include "Common.h"
+  13          #include "light.h"
+  14          
+  15          extern unsigned char  comtem,comwet;
+  16          extern signed char comfilter;
+  17          extern unsigned int comp25;
+  18          
+  19          extern bit bopen;
+  20          extern unsigned char mwind;
+  21          
+  22          extern bit banion;
+  23          extern bit bbac;
+  24          extern bit bauto;
+  25          extern bit bsleep ;
+  26          extern bit block;
+  27          extern bit resetflag;
+  28          extern void startmotor(unsigned char speed);
+  29          extern volatile unsigned char opentime ;
+  30          extern bit openop ;
+  31          extern bit startreset;
+  32          extern void closework(void);
+  33          extern void openwork(void);
+  34          extern void sleepwork(void);
+  35          extern void awakework (void);
+  36          
+  37          
+  38          
+  39          /******************************************************************************
+  40                                  1:dp数据点序列类型对照表
+  41                    **此为自动生成代码,如在开发平台有相关修改请重新下载MCU_SDK**         
+  42          ******************************************************************************/
+  43          const DOWNLOAD_CMD_S download_cmd[] =
+  44          {
+  45            {DPID_SWITCH, DP_TYPE_BOOL},
+  46            {DPID_PM25, DP_TYPE_VALUE},
+  47            {DPID_MODE, DP_TYPE_ENUM},
+  48            {DPID_SPEED, DP_TYPE_ENUM},
+  49            {DPID_FILTER, DP_TYPE_VALUE},
+  50            {DPID_ANION, DP_TYPE_BOOL},
+  51            {DPID_LOCK, DP_TYPE_BOOL},
+  52            {DPID_UV, DP_TYPE_BOOL},
+  53            {DPID_FILTERRESET, DP_TYPE_BOOL},
+  54            {DPID_TEMP, DP_TYPE_VALUE},
+C51 COMPILER V9.01   PROTOCOL                                                              06/22/2018 20:35:27 PAGE 2   
+
+  55            {DPID_HUMIDITY, DP_TYPE_VALUE},
+  56            {DPID_FAULT, DP_TYPE_FAULT},
+  57            {DPID_AIR_QUALITY_INDOOR, DP_TYPE_ENUM},
+  58            {DPID_AIR_QUALITY_OUTDOOR, DP_TYPE_ENUM},
+  59            {DPID_PM25_OUTDOOR, DP_TYPE_VALUE},
+  60            {DPID_SLEEP, DP_TYPE_BOOL},
+  61          };
+  62          
+  63          
+  64          /******************************************************************************
+  65                                     2:串口单字节发送函数
+  66          请将MCU串口发送函数填入该函数内,并将接收到的数据作为参数传入串口发送函数
+  67          ******************************************************************************/
+  68          
+  69          /*****************************************************************************
+  70          函数名称 : uart_transmit_output
+  71          功能描述 : 发数据处理
+  72          输入参数 : value:串口收到字节数据
+  73          返回参数 : 无
+  74          使用说明 : 请将MCU串口发送函数填入该函数内,并将接收到的数据作为参数传入串口发送函数
+  75          *****************************************************************************/
+  76          void uart_transmit_output(unsigned char value)
+  77          {
+  78   1      
+  79   1          extern void  Send_Data_To_UART0(unsigned char c);
+  80   1          Send_Data_To_UART0(value);
+  81   1      
+  82   1      }
+  83          
+  84          
+  85          /*****************************************************************************
+  86          函数名称 : all_data_update
+  87          功能描述 : 系统所有dp点信息上传,实现APP和muc数据同步
+  88          输入参数 : 无
+  89          返回参数 : 无
+  90          使用说明 : 此函数SDK内部需调用;
+  91                     MCU必须实现该函数内数据上报功能;包括只上报和可上报可下发型数据
+  92          *****************************************************************************/
+  93          void all_data_update(void)
+  94          {
+  95   1        mcu_dp_bool_update(DPID_SWITCH,bopen); //BOOL
+  96   1      //  mcu_dp_value_update(DPID_PM25,comp25); //VALUE
+  97   1        mcu_dp_enum_update(DPID_MODE,bauto); //     
+  98   1        mcu_dp_enum_update(DPID_SPEED,mwind-1); //enum                                  
+  99   1      //  mcu_dp_value_update(DPID_FILTER,comfilter); //VALUE                           
+ 100   1        mcu_dp_bool_update(DPID_ANION,banion); //BOOL
+ 101   1        mcu_dp_bool_update(DPID_LOCK,block); //BOOL                                      
+ 102   1        mcu_dp_bool_update(DPID_UV,bbac); //BOOL
+ 103   1      //  mcu_dp_bool_update(DPID_FILTERRESET,resetflag); //BOOL                
+ 104   1      //  mcu_dp_value_update(DPID_TEMP,comtem); //VALUE
+ 105   1      //  mcu_dp_value_update(DPID_HUMIDITY,comwet); //VALUE
+ 106   1      //  mcu_dp_fault_update(DPID_FAULT,0); //fault                     N   
+ 107   1      //  mcu_dp_enum_update(DPID_AIR_QUALITY_INDOOR,1); //enum               N meaningless ,app gets pm25 ,enough judgement
+ 108   1        mcu_dp_bool_update(DPID_SLEEP,bsleep); //BOOL                                  
+ 109   1      
+ 110   1      }
+ 111          
+ 112          
+ 113          /*****************************************************************************
+ 114          函数名称 : dp_download_switch_handle
+ 115          功能描述 : 针对DPID_SWITCH的处理函数
+ 116          输入参数 : value:数据源数据
+C51 COMPILER V9.01   PROTOCOL                                                              06/22/2018 20:35:27 PAGE 3   
+
+ 117                  : length:数据长度
+ 118          返回参数 : 成功返回:SUCCESS/失败返回:ERROR
+ 119          使用说明 : 可下发可上报类型,需要在处理完数据后上报处理结果至app
+ 120          *****************************************************************************/
+ 121          static unsigned char dp_download_switch_handle(const unsigned char value[], unsigned short length)
+ 122          {
+ 123   1          unsigned char ret;
+ 124   1          unsigned char Switch;
+ 125   1        
+ 126   1        Switch = mcu_get_dp_download_bool(value,length);
+ 127   1        if(Switch == 0)
+ 128   1        {
+ 129   2          closework();//switch off
+ 130   2        }
+ 131   1        else
+ 132   1        {
+ 133   2          openwork();//switch on
+ 134   2        }
+ 135   1        
+ 136   1        //finish DP reflect to sever;
+ 137   1        ret = mcu_dp_bool_update(DPID_SWITCH,Switch);
+ 138   1        if(ret == SUCCESS)
+ 139   1          return SUCCESS;
+ 140   1        else
+ 141   1          return ERROR;
+ 142   1      }
+ 143          /*****************************************************************************
+ 144          函数名称 : dp_download_mode_handle
+ 145          功能描述 : 针对DPID_MODE的处理函数
+ 146          输入参数 : value:数据源数据
+ 147                  : length:数据长度
+ 148          返回参数 : 成功返回:SUCCESS/失败返回:ERROR
+ 149          使用说明 : 可下发可上报类型,需要在处理完数据后上报处理结果至app
+ 150          *****************************************************************************/
+ 151          static unsigned char dp_download_mode_handle(const unsigned char value[], unsigned short length)
+ 152          {
+ 153   1        //示例:当前DP类型为ENUM
+ 154   1        unsigned char ret;
+ 155   1        unsigned char mode;
+ 156   1        
+ 157   1        mode = mcu_get_dp_download_enum(value,length);
+ 158   1        switch(mode)
+ 159   1        {
+ 160   2          case 0:     bauto = 0;
+ 161   2            
+ 162   2            break;
+ 163   2            
+ 164   2          case 1:     bauto = 1;
+ 165   2            
+ 166   2            break;
+ 167   2            
+ 168   2          case 2:      bsleep =0 ;
+ 169   2            
+ 170   2            break;
+ 171   2            
+ 172   2          case 3:      bsleep =1;
+ 173   2            
+ 174   2            break;
+ 175   2            
+ 176   2          default:
+ 177   2            
+ 178   2            break;
+C51 COMPILER V9.01   PROTOCOL                                                              06/22/2018 20:35:27 PAGE 4   
+
+ 179   2        }
+ 180   1        
+ 181   1        //finish DP reflect to sever;
+ 182   1        ret = mcu_dp_enum_update(DPID_MODE,mode);
+ 183   1        if(ret == SUCCESS)
+ 184   1          return SUCCESS;
+ 185   1        else
+ 186   1          return ERROR;
+ 187   1      }
+ 188          /*****************************************************************************
+ 189          函数名称 : dp_download_speed_handle
+ 190          功能描述 : 针对DPID_SPEED的处理函数
+ 191          输入参数 : value:数据源数据
+ 192                  : length:数据长度
+ 193          返回参数 : 成功返回:SUCCESS/失败返回:ERROR
+ 194          使用说明 : 可下发可上报类型,需要在处理完数据后上报处理结果至app
+ 195          *****************************************************************************/
+ 196          static unsigned char dp_download_speed_handle(const unsigned char value[], unsigned short length)
+ 197          {
+ 198   1      
+ 199   1        unsigned char ret;
+ 200   1        unsigned char speed;
+ 201   1        
+ 202   1        speed = mcu_get_dp_download_enum(value,length);
+ 203   1        switch(speed)
+ 204   1        {
+ 205   2          case 0:       mwind = 1;      bauto = 0;
+ 206   2            
+ 207   2            break;
+ 208   2            
+ 209   2          case 1:       mwind = 2;    bauto = 0;
+ 210   2            
+ 211   2            break;
+ 212   2            
+ 213   2          case 2:       mwind = 3;     bauto = 0;
+ 214   2            
+ 215   2            break;
+ 216   2            
+ 217   2          case 3:       mwind = 4;   bauto = 0;
+ 218   2            
+ 219   2            break;
+ 220   2            
+ 221   2          default:
+ 222   2            
+ 223   2            break;
+ 224   2        }
+ 225   1        if(!openop&&!startreset)
+ 226   1        startmotor(mwind); 
+ 227   1        //finish DP reflect to sever;
+ 228   1        ret = mcu_dp_enum_update(DPID_SPEED,speed);
+ 229   1        if(ret == SUCCESS)
+ 230   1          return SUCCESS;
+ 231   1        else
+ 232   1          return ERROR;
+ 233   1      }
+ 234          /*****************************************************************************
+ 235          函数名称 : dp_download_anion_handle
+ 236          功能描述 : 针对DPID_ANION的处理函数
+ 237          输入参数 : value:数据源数据
+ 238                  : length:数据长度
+ 239          返回参数 : 成功返回:SUCCESS/失败返回:ERROR
+ 240          使用说明 : 可下发可上报类型,需要在处理完数据后上报处理结果至app
+C51 COMPILER V9.01   PROTOCOL                                                              06/22/2018 20:35:27 PAGE 5   
+
+ 241          *****************************************************************************/
+ 242          static unsigned char dp_download_anion_handle(const unsigned char value[], unsigned short length)
+ 243          {
+ 244   1        unsigned char ret;
+ 245   1        unsigned char anion;
+ 246   1        
+ 247   1        anion = mcu_get_dp_download_bool(value,length);
+ 248   1        if(anion == 0)
+ 249   1        {
+ 250   2          banion = 0;//switch off
+ 251   2        }
+ 252   1        else
+ 253   1        {
+ 254   2          banion = 1;//switch on
+ 255   2        }
+ 256   1        
+ 257   1        //finish DP reflect to sever;
+ 258   1        ret = mcu_dp_bool_update(DPID_ANION,anion);
+ 259   1        if(ret == SUCCESS)
+ 260   1          return SUCCESS;
+ 261   1        else
+ 262   1          return ERROR;
+ 263   1      }
+ 264          /*****************************************************************************
+ 265          函数名称 : dp_download_lock_handle
+ 266          功能描述 : 针对DPID_LOCK的处理函数
+ 267          输入参数 : value:数据源数据
+ 268                  : length:数据长度
+ 269          返回参数 : 成功返回:SUCCESS/失败返回:ERROR
+ 270          使用说明 : 可下发可上报类型,需要在处理完数据后上报处理结果至app
+ 271          *****************************************************************************/
+ 272          static unsigned char dp_download_lock_handle(const unsigned char value[], unsigned short length)
+ 273          {
+ 274   1        unsigned char ret;
+ 275   1        unsigned char lock;
+ 276   1        
+ 277   1        lock = mcu_get_dp_download_bool(value,length);
+ 278   1        if(lock == 0)
+ 279   1        {
+ 280   2          //switch off
+ 281   2        }
+ 282   1        else
+ 283   1        {
+ 284   2          //switch on
+ 285   2        }
+ 286   1        
+ 287   1        //finish DP reflect to sever;
+ 288   1        ret = mcu_dp_bool_update(DPID_LOCK,lock);
+ 289   1        if(ret == SUCCESS)
+ 290   1          return SUCCESS;
+ 291   1        else
+ 292   1          return ERROR;
+ 293   1      }
+ 294          /*****************************************************************************
+ 295          函数名称 : dp_download_uv_handle
+ 296          功能描述 : 针对DPID_UV的处理函数
+ 297          输入参数 : value:数据源数据
+ 298                  : length:数据长度
+ 299          返回参数 : 成功返回:SUCCESS/失败返回:ERROR
+ 300          使用说明 : 可下发可上报类型,需要在处理完数据后上报处理结果至app
+ 301          *****************************************************************************/
+ 302          static unsigned char dp_download_uv_handle(const unsigned char value[], unsigned short length)
+C51 COMPILER V9.01   PROTOCOL                                                              06/22/2018 20:35:27 PAGE 6   
+
+ 303          {
+ 304   1        unsigned char ret;
+ 305   1        unsigned char uv;
+ 306   1        
+ 307   1        uv = mcu_get_dp_download_bool(value,length);
+ 308   1        if(uv == 0)
+ 309   1        {
+ 310   2          bbac = 0;//switch off
+ 311   2        }
+ 312   1        else
+ 313   1        {
+ 314   2          bbac = 1;//switch on
+ 315   2        }
+ 316   1        
+ 317   1        //finish DP reflect to sever;
+ 318   1        ret = mcu_dp_bool_update(DPID_UV,uv);
+ 319   1        if(ret == SUCCESS)
+ 320   1          return SUCCESS;
+ 321   1        else
+ 322   1          return ERROR;
+ 323   1      }
+ 324          /*****************************************************************************
+ 325          函数名称 : dp_download_filterreset_handle
+ 326          功能描述 : 针对DPID_FILTERRESET的处理函数
+ 327          输入参数 : value:数据源数据
+ 328                  : length:数据长度
+ 329          返回参数 : 成功返回:SUCCESS/失败返回:ERROR
+ 330          使用说明 : 可下发可上报类型,需要在处理完数据后上报处理结果至app
+ 331          *****************************************************************************/
+ 332          static unsigned char dp_download_filterreset_handle(const unsigned char value[], unsigned short length)
+ 333          {
+ 334   1        unsigned char ret;
+ 335   1        unsigned char filterreset;
+ 336   1        
+ 337   1        filterreset = mcu_get_dp_download_bool(value,length);
+ 338   1        if(filterreset == 0)
+ 339   1        {
+ 340   2          //switch off
+ 341   2        }
+ 342   1        else
+ 343   1        {
+ 344   2          //switch on
+ 345   2        }
+ 346   1        
+ 347   1        //finish DP reflect to sever;
+ 348   1        ret = mcu_dp_bool_update(DPID_FILTERRESET,filterreset);
+ 349   1        if(ret == SUCCESS)
+ 350   1          return SUCCESS;
+ 351   1        else
+ 352   1          return ERROR;
+ 353   1      }
+ 354          /*****************************************************************************
+ 355          函数名称 : dp_download_air_quality_outdoor_handle
+ 356          功能描述 : 针对DPID_AIR_QUALITY_OUTDOOR的处理函数
+ 357          输入参数 : value:数据源数据
+ 358                  : length:数据长度
+ 359          返回参数 : 成功返回:SUCCESS/失败返回:ERROR
+ 360          使用说明 : 只下发类型,需要在处理完数据后上报处理结果至app
+ 361          *****************************************************************************/
+ 362          static unsigned char dp_download_air_quality_outdoor_handle(const unsigned char value[], unsigned short le
+             -ngth)
+ 363          {
+C51 COMPILER V9.01   PROTOCOL                                                              06/22/2018 20:35:27 PAGE 7   
+
+ 364   1        unsigned char ret;
+ 365   1        unsigned char air_quality_outdoor;
+ 366   1        
+ 367   1        air_quality_outdoor = mcu_get_dp_download_enum(value,length);
+ 368   1        switch(air_quality_outdoor)
+ 369   1        {
+ 370   2          case 0:
+ 371   2            
+ 372   2            break;
+ 373   2            
+ 374   2          case 1:
+ 375   2            
+ 376   2            break;
+ 377   2            
+ 378   2          case 2:
+ 379   2            
+ 380   2            break;
+ 381   2            
+ 382   2          case 3:
+ 383   2            
+ 384   2            break;
+ 385   2            
+ 386   2          case 4:
+ 387   2            
+ 388   2            break;
+ 389   2            
+ 390   2          case 5:
+ 391   2            
+ 392   2            break;
+ 393   2            
+ 394   2          default:
+ 395   2            
+ 396   2            break;
+ 397   2        }
+ 398   1        
+ 399   1        //finish DP reflect to sever;
+ 400   1        ret = mcu_dp_enum_update(DPID_AIR_QUALITY_OUTDOOR,air_quality_outdoor);
+ 401   1        if(ret == SUCCESS)
+ 402   1          return SUCCESS;
+ 403   1        else
+ 404   1          return ERROR;
+ 405   1      }
+ 406          /*****************************************************************************
+ 407          函数名称 : dp_download_pm25_outdoor_handle
+ 408          功能描述 : 针对DPID_PM25_OUTDOOR的处理函数
+ 409          输入参数 : value:数据源数据
+ 410                  : length:数据长度
+ 411          返回参数 : 成功返回:SUCCESS/失败返回:ERROR
+ 412          使用说明 : 只下发类型,需要在处理完数据后上报处理结果至app
+ 413          *****************************************************************************/
+ 414          static unsigned char dp_download_pm25_outdoor_handle(const unsigned char value[], unsigned short length)
+ 415          {
+ 416   1        unsigned char ret;
+ 417   1        unsigned long pm25_outdoor;
+ 418   1        
+ 419   1        pm25_outdoor = mcu_get_dp_download_value(value,length);
+ 420   1      
+ 421   1        
+ 422   1        //finish DP reflect to sever;
+ 423   1        ret = mcu_dp_value_update(DPID_PM25_OUTDOOR,pm25_outdoor);
+ 424   1        if(ret == SUCCESS)
+ 425   1          return SUCCESS;
+C51 COMPILER V9.01   PROTOCOL                                                              06/22/2018 20:35:27 PAGE 8   
+
+ 426   1        else
+ 427   1          return ERROR;
+ 428   1      }
+ 429          /*****************************************************************************
+ 430          函数名称 : dp_download_sleep_handle
+ 431          功能描述 : 针对DPID_SLEEP的处理函数
+ 432          输入参数 : value:数据源数据
+ 433                  : length:数据长度
+ 434          返回参数 : 成功返回:SUCCESS/失败返回:ERROR
+ 435          使用说明 : 可下发可上报类型,需要在处理完数据后上报处理结果至app
+ 436          *****************************************************************************/
+ 437          static unsigned char dp_download_sleep_handle(const unsigned char value[], unsigned short length)
+ 438          {
+ 439   1        unsigned char ret;
+ 440   1        unsigned char sleep;
+ 441   1        
+ 442   1        sleep = mcu_get_dp_download_bool(value,length);
+ 443   1        if(sleep == 0)
+ 444   1        {
+ 445   2      
+ 446   2         awakework ();//switch off
+ 447   2        }
+ 448   1        else
+ 449   1        {
+ 450   2         sleepwork();//switch on
+ 451   2        }
+ 452   1        
+ 453   1        //finish DP reflect to sever;
+ 454   1        ret = mcu_dp_bool_update(DPID_SLEEP,sleep);
+ 455   1        if(ret == SUCCESS)
+ 456   1          return SUCCESS;
+ 457   1        else
+ 458   1          return ERROR;
+ 459   1      }
+ 460          
+ 461          
+ 462          /******************************************************************************
+ 463                                          WARNING!!!                     
+ 464          此代码为SDK内部调用,请按照实际dp数据实现函数内部数据
+ 465          ******************************************************************************/
+ 466          #ifdef SUPPORT_MCU_RTC_CHECK
+              /*****************************************************************************
+              函数名称 : mcu_write_rtctime
+              功能描述 : MCU校对本地RTC时钟
+              输入参数 : 无
+              返回参数 : 无
+              使用说明 : MCU需要自行实现该功能
+              *****************************************************************************/
+              void mcu_write_rtctime(unsigned char time[])
+              {
+                /*
+                time[0]为是否获取时间成功标志，为 0 表示失败，为 1表示成功
+                time[1] 为 年 份 , 0x00 表 示2000 年
+                time[2]为月份，从 1 开始到12 结束
+                time[3]为日期，从 1 开始到31 结束
+                time[4]为时钟，从 0 开始到23 结束
+                time[5]为分钟，从 0 开始到59 结束
+                time[6]为秒钟，从 0 开始到59 结束
+                time[7]为星期，从 1 开始到 7 结束，1代表星期一
+               */
+                if(time[0] == 1)
+                {
+C51 COMPILER V9.01   PROTOCOL                                                              06/22/2018 20:35:27 PAGE 9   
+
+                  //get wifi local rtctime 
+                       
+                }
+                else
+                {
+                      //get wrong,maybe wifi no net
+                }
+              }
+              #endif
+ 497          
+ 498          
+ 499          /*****************************************************************************
+ 500          函数名称 : wifi_test_result
+ 501          功能描述 : wifi功能测试反馈
+ 502          输入参数 : result:wifi功能测试结果;0:失败/1:成功
+ 503                     rssi:测试成功表示wifi信号强度/测试失败表示错误类型
+ 504          返回参数 : 无
+ 505          使用说明 : MCU需要自行实现该功能
+ 506          *****************************************************************************/
+ 507          void wifi_test_result(unsigned char result,unsigned char rssi)
+ 508          {
+ 509   1      
+ 510   1        if(result == 0)
+ 511   1        {
+ 512   2          //测试失败
+ 513   2          if(rssi == 0x00)
+ 514   2          {
+ 515   3            //未扫描到名称为tuya_mdev_test路由器,请检查
+ 516   3                writeruntime(0,0,0,0,0,0,0);
+ 517   3                writeno();
+ 518   3          }
+ 519   2          else if(rssi == 0x01)
+ 520   2          {
+ 521   3                writeruntime(0,0,0,0,0,0,0);
+ 522   3                writeun();
+ 523   3            //模块未授权
+ 524   3          }
+ 525   2        }
+ 526   1        else
+ 527   1        {
+ 528   2          //测试成功 ;rssi为信号强度(0-100, 0信号最差，100信号最强)
+ 529   2          writeruntime(0,0,0,0,rssi/100,rssi/10%10,rssi%10);
+ 530   2        }
+ 531   1        
+ 532   1      }
+ 533          
+ 534          
+ 535          #ifdef SUPPORT_MCU_FIRM_UPDATE
+              /*****************************************************************************
+              函数名称 : mcu_firm_update_handle
+              功能描述 : MCU进入固件升级模式
+              输入参数 : value:固件缓冲区
+                         position:当前数据包在于固件位置
+                         length:当前固件包长度(固件包长度为0时,表示固件包发送完成)
+              返回参数 : 无
+              使用说明 : MCU需要自行实现该功能
+              *****************************************************************************/
+              unsigned char mcu_firm_update_handle(const unsigned char value[],unsigned long position,unsigned short len
+             -gth)
+              {
+                #error "请自行完成MCU固件升级代码,完成后请删除该行"
+                if(length == 0)
+C51 COMPILER V9.01   PROTOCOL                                                              06/22/2018 20:35:27 PAGE 10  
+
+                {
+                  //固件数据发送完成
+                  
+                }
+                else
+                {
+                  //固件数据处理
+                }
+                
+                return SUCCESS;
+              }
+              #endif
+ 561          /******************************************************************************
+ 562                                          WARNING!!!                     
+ 563          以下函数用户请勿修改!!
+ 564          ******************************************************************************/
+ 565          
+ 566          /*****************************************************************************
+ 567          函数名称 : dp_download_handle
+ 568          功能描述 : dp下发处理函数
+ 569          输入参数 : dpid:DP序号
+ 570                     value:dp数据缓冲区地址
+ 571                     length:dp数据长度
+ 572          返回参数 : 成功返回:SUCCESS/失败返回:ERRO
+ 573          使用说明 : 该函数用户不能修改
+ 574          *****************************************************************************/
+ 575          unsigned char dp_download_handle(unsigned char dpid,const unsigned char value[], unsigned short length)
+ 576          {
+ 577   1        /*********************************
+ 578   1        当前函数处理可下发/可上报数据调用                    
+ 579   1        具体函数内需要实现下发数据处理
+ 580   1        完成用需要将处理结果反馈至APP端,否则APP会认为下发失败
+ 581   1        ***********************************/
+ 582   1        unsigned char ret;
+ 583   1        switch(dpid)
+ 584   1        {
+ 585   2          case DPID_SWITCH:
+ 586   2            //开关处理函数
+ 587   2            ret = dp_download_switch_handle(value,length); 
+ 588   2            break;
+ 589   2          case DPID_MODE:
+ 590   2            //模式处理函数
+ 591   2            ret = dp_download_mode_handle(value,length);      keytone();
+ 592   2            break;
+ 593   2          case DPID_SPEED:
+ 594   2            //风速处理函数
+ 595   2            ret = dp_download_speed_handle(value,length);     bauto =0 ;mcu_dp_enum_update(DPID_MODE,bauto); keytone
+             -();
+ 596   2            break;
+ 597   2          case DPID_ANION:
+ 598   2            //负离子处理函数
+ 599   2            ret = dp_download_anion_handle(value,length);     keytone();
+ 600   2            break;
+ 601   2          case DPID_LOCK:
+ 602   2            //童锁处理函数
+ 603   2            ret = dp_download_lock_handle(value,length);      keytone();
+ 604   2            break;
+ 605   2          case DPID_UV:
+ 606   2            //UV杀菌处理函数
+ 607   2            ret = dp_download_uv_handle(value,length);  keytone();
+ 608   2            break;
+ 609   2          case DPID_FILTERRESET:
+C51 COMPILER V9.01   PROTOCOL                                                              06/22/2018 20:35:27 PAGE 11  
+
+ 610   2            //滤芯复位处理函数
+ 611   2            ret = dp_download_filterreset_handle(value,length);
+ 612   2            break;
+ 613   2          case DPID_AIR_QUALITY_OUTDOOR:
+ 614   2            //室外空气质量处理函数
+ 615   2            ret = dp_download_air_quality_outdoor_handle(value,length);
+ 616   2            break;
+ 617   2          case DPID_PM25_OUTDOOR:
+ 618   2            //室外PM2.5处理函数
+ 619   2            ret = dp_download_pm25_outdoor_handle(value,length);
+ 620   2            break;
+ 621   2          case DPID_SLEEP:
+ 622   2            //睡眠处理函数
+ 623   2            ret = dp_download_sleep_handle(value,length);       
+ 624   2            break;
+ 625   2      
+ 626   2        default:
+ 627   2          break;
+ 628   2        }
+ 629   1        return ret;
+ 630   1      }
+ 631          /*****************************************************************************
+ 632          函数名称 : get_download_cmd_total
+ 633          功能描述 : 获取所有dp命令总和
+ 634          输入参数 : 无
+ 635          返回参数 : 下发命令总和
+ 636          使用说明 : 该函数用户不能修改
+ 637          *****************************************************************************/
+ 638          unsigned char get_download_cmd_total(void)
+ 639          {
+ 640   1        return(sizeof(download_cmd) / sizeof(download_cmd[0]));
+ 641   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    871    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =     32      15
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,1 @@
+"Code\touch.c" LARGE BROWSE INCDIR(.\Include;.\wifi;.\Code) DEFINE (FOSC_160000) DEBUG OBJECTEXTEND PRINT(.\LST\touch.lst) OBJECT(.\Output\touch.obj)

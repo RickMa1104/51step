@@ -1,0 +1,1 @@
+"Common\Delay.c" LARGE BROWSE INCDIR(.\Include;.\wifi;.\Code) DEFINE (FOSC_160000) DEBUG OBJECTEXTEND PRINT(.\LST\Delay.lst) OBJECT(.\Output\Delay.obj)

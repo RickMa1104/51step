@@ -1,0 +1,1 @@
+"Code\pm25.c" LARGE BROWSE INCDIR(.\Include;.\wifi;.\Code) DEFINE (FOSC_160000) DEBUG OBJECTEXTEND PRINT(.\LST\pm25.lst) OBJECT(.\Output\pm25.obj)

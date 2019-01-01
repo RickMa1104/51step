@@ -1,0 +1,1 @@
+"wifi\system.c" LARGE BROWSE INCDIR(.\Include;.\wifi;.\Code) DEFINE (FOSC_160000) DEBUG OBJECTEXTEND PRINT(.\LST\system.lst) OBJECT(.\Output\system.obj)

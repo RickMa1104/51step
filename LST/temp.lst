@@ -1,0 +1,94 @@
+C51 COMPILER V9.01   TEMP                                                                  06/16/2018 14:32:41 PAGE 1   
+
+
+C51 COMPILER V9.01, COMPILATION OF MODULE TEMP
+OBJECT MODULE PLACED IN .\Output\temp.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE Code\temp.c LARGE BROWSE INCDIR(.\Include;.\wifi;.\Code) DEFINE(FOSC_160000
+                    -) DEBUG OBJECTEXTEND PRINT(.\LST\temp.lst) OBJECT(.\Output\temp.obj)
+
+line level    source
+
+   1          #include "N76E003.h"
+   2          #include "Common.h"
+   3          #include "temp.h"
+   4          #include "Delay.h"
+   5          
+   6          UINT8 U8temp,U8comdata;
+   7          UINT8 data  U8FLAG;
+   8          extern volatile UINT8 comtem,comwet;
+   9          
+  10          void  COM(void)
+  11          {
+  12   1          UINT8  i;
+  13   1              for(i=0;i<8;i++)           
+  14   1              {               
+  15   2                      U8FLAG=2;       
+  16   2                      while((!WSD)&&U8FLAG++);
+  17   2                      U8FLAG = 2;
+  18   2                      while((WSD)&&U8FLAG++);         
+  19   2                      if(U8FLAG>47)   // 47
+  20   2                      U8temp=1;
+  21   2                      else
+  22   2                      U8temp=0;               
+  23   2                      if(U8FLAG==1)break;              //timeout break                
+  24   2                      U8comdata<<=1;
+  25   2                      U8comdata|=U8temp;     
+  26   2              }
+  27   1      }
+  28                  
+  29          void getws(void)
+  30          {
+  31   1          UINT8  U8T_data_H_temp,U8T_data_L_temp,U8RH_data_H_temp,U8RH_data_L_temp,U8checkdata_temp;
+  32   1              WSD=0;  // main communication           
+  33   1              Timer2_Delay500us(40);
+  34   1              U8FLAG=2;
+  35   1              WSD =1; // release bus                     
+  36   1          while((WSD)&&U8FLAG++);     
+  37   1      
+  38   1         if(!WSD)     // check slave response   
+  39   1         {
+  40   2         U8FLAG=2; 
+  41   2         while((!WSD)&&U8FLAG++);
+  42   2         U8FLAG=2;
+  43   2         while((WSD)&&U8FLAG++);
+  44   2       
+  45   2         COM();
+  46   2         U8RH_data_H_temp=U8comdata;
+  47   2         COM();
+  48   2         U8RH_data_L_temp=U8comdata;
+  49   2         COM();
+  50   2         U8T_data_H_temp=U8comdata;
+  51   2         COM();
+  52   2         U8T_data_L_temp=U8comdata;
+  53   2         COM();
+  54   2         U8checkdata_temp=U8comdata;
+C51 COMPILER V9.01   TEMP                                                                  06/16/2018 14:32:41 PAGE 2   
+
+  55   2         WSD=1;
+  56   2       
+  57   2         U8temp=(U8T_data_H_temp+U8T_data_L_temp+U8RH_data_H_temp+U8RH_data_L_temp);
+  58   2         if(U8temp==U8checkdata_temp)
+  59   2         {
+  60   3            comwet =  U8RH_data_H_temp;
+  61   3                comtem =  U8T_data_H_temp;
+  62   3         }
+  63   2         }
+  64   1      
+  65   1      }
+  66          
+  67          
+  68          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    196    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =      2    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      1    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

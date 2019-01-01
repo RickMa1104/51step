@@ -1,0 +1,11 @@
+".\Output\GPIO.obj",
+".\Output\customtimer.obj",
+".\Output\step.obj",
+".\Output\draw.obj",
+".\Output\coordinate.obj",
+".\Output\H595.obj",
+".\Output\Common.obj",
+".\Output\STARTUP.obj" 
+TO ".\Output\GPIO" 
+PRINT(".\LST\GPIO.m51") RAMSIZE(256) 
+DISABLEWARNING (16) 

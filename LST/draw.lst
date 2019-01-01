@@ -1,0 +1,203 @@
+C51 COMPILER V9.01   DRAW                                                                  10/02/2018 17:03:47 PAGE 1   
+
+
+C51 COMPILER V9.01, COMPILATION OF MODULE DRAW
+OBJECT MODULE PLACED IN .\Output\draw.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE Code\draw.c LARGE BROWSE INCDIR(.\Include;.\wifi;.\Code) DEFINE(FOSC_160000
+                    -) DEBUG OBJECTEXTEND PRINT(.\LST\draw.lst) OBJECT(.\Output\draw.obj)
+
+line level    source
+
+   1          #define MAINCOMMON
+   2          #include "step.h"
+   3          #include "draw.h"
+   4          #include "H595.h"
+   5          #include "coordinate.h"
+   6          #include "stdlib.h"
+   7          #include "math.h"
+   8          #include "main.h"
+   9                  
+  10          
+  11                                  
+  12          code float figCircle[16][3] = {{-0.70711,-0.70711,1},{-0.92388,-0.38268,1},{-1,0,1},{-0.92388,0.38268,1},{
+             --0.70711,0.70711,1},{-0.38268,0.92388,1},
+  13          {0,1,1},{0.38268,0.92388,1},{0.70711,0.70711,1},{0.92388,0.38268,1},{1,0,1},{0.92388,-0.38268,1},{0.70711,
+             --0.70711,1},{0.38268,-0.92388,1},{0,-1,1},{-0.38268,-0.92388,1}};
+  14          
+  15          code float figSquare1[4][3] = {{-0.70711,-0.70711,1},{-0.70711,0.70711,1},{0.70711,0.70711,1},{0.70711,-0.
+             -70711,1}}; //0 degree;
+  16          code float figSquare2[4][3] = {{-1,0,1},{0,1,1},{1,0,1},{0,-1,1}}; //45 degree;
+  17          void matchspeed(hfingure *hf,hstep *hs)
+  18          {
+  19   1              
+  20   1              if(hf->arrInfo[hf->nCurrentPoint][0]==0 || hf->arrInfo[hf->nCurrentPoint][1]==0)
+  21   1              {
+  22   2              hs->xspeed =hf->speedref;
+  23   2              hs->yspeed =hf->speedref;                                                                       
+  24   2              }
+  25   1      
+  26   1              else
+  27   1              if(abs(hf->arrInfo[hf->nCurrentPoint][0]) >= abs(hf->arrInfo[hf->nCurrentPoint][1]))
+  28   1              {
+  29   2              hs->xspeed =hf->speedref;                                       
+  30   2              hs->yspeed  =hf->speedref*(fabs(hf->arrInfo[hf->nCurrentPoint][0])/fabs(hf->arrInfo[hf->nCurrentPoint][1]
+             -));                
+  31   2              }
+  32   1              else
+  33   1              {
+  34   2              hs->yspeed =hf->speedref;                                       
+  35   2              hs->xspeed =hf->speedref*(fabs(hf->arrInfo[hf->nCurrentPoint][1])/fabs(hf->arrInfo[hf->nCurrentPoint][0])
+             -);                                                
+  36   2              }               
+  37   1              
+  38   1      }       
+  39                  
+  40          void    drawfigure(hfingure *hf)
+  41          {
+  42   1      
+  43   1              while(hf->nCurrentPoint < hf->nfigpoint)
+  44   1              {
+  45   2              
+  46   2                      hs.xdes = hf->arrInfo[hf->nCurrentPoint][0];
+  47   2                      hs.ydes = hf->arrInfo[hf->nCurrentPoint][1];
+  48   2                      
+  49   2                      matchspeed(hf,&hs);
+C51 COMPILER V9.01   DRAW                                                                  10/02/2018 17:03:47 PAGE 2   
+
+  50   2                      xymoveT(&hs);                           
+  51   2                      
+  52   2                      hf->nCurrentPoint++;
+  53   2              }
+  54   1      
+  55   1                      hf->nCurrentPoint = 0;                                  
+  56   1                      
+  57   1      }
+  58          void selectfig(void)
+  59          {
+  60   1              switch(fig.nSeries)
+  61   1              {
+  62   2                      case(0):        
+  63   2                      fig.interface[0] = figCircle[0][0]*fig.radius + fig.xcenter;
+  64   2                      fig.interface[1] = figCircle[0][1]*fig.radius + fig.ycenter;                                    
+  65   2                      movein(&fig);
+  66   2                      fig.nSeries++;
+  67   2      
+  68   2                      break;  
+  69   2                      
+  70   2                      case(1):
+  71   2                      CircleToCoordinate(&fig,figCircle,16);  
+  72   2                      break;  
+  73   2                      
+  74   2                      case(2):
+  75   2                      fig.xcenter += 48;              
+  76   2                      circlemove(&fig,figCircle);
+  77   2                      break;
+  78   2                      
+  79   2                      case(3):
+  80   2                      CircleToCoordinate(&fig,figCircle,16);                          
+  81   2                      break;
+  82   2                      case(4):
+  83   2                      fig.ycenter += 48;              
+  84   2                      circlemove(&fig,figCircle);                                             
+  85   2                      break;
+  86   2                      
+  87   2                      case(5):
+  88   2                      CircleToCoordinate(&fig,figCircle,16);                                                          
+  89   2                      break;
+  90   2                      
+  91   2                      case(6):
+  92   2                      fig.xcenter -= 48;              
+  93   2                      circlemove(&fig,figCircle);                     
+  94   2                      break;
+  95   2                      
+  96   2                      case(7):
+  97   2                      CircleToCoordinate(&fig,figCircle,16);                  
+  98   2                      break;
+  99   2                      
+ 100   2                      case(8):
+ 101   2                      fig.xcenter = 32;
+ 102   2                      fig.ycenter = -32;              
+ 103   2                      fig.radius  = 32;
+ 104   2                      circlemove(&fig,figCircle);             
+ 105   2                              
+ 106   2                      break;
+ 107   2                      
+ 108   2                      case 9:
+ 109   2                      CircleToCoordinate(&fig,figCircle,16);                          
+ 110   2                      break;
+ 111   2                      
+C51 COMPILER V9.01   DRAW                                                                  10/02/2018 17:03:47 PAGE 3   
+
+ 112   2                      case 10:
+ 113   2                              fig.radius  = 24;
+ 114   2                              circlemove(&fig,figCircle);             
+ 115   2                      break;
+ 116   2                      
+ 117   2                      case 11:
+ 118   2                      CircleToCoordinate(&fig,figCircle,16);                                          
+ 119   2                      break;
+ 120   2                      
+ 121   2                      case 12:        
+ 122   2                              fig.radius  = 16;
+ 123   2                        circlemove(&fig,figCircle);   
+ 124   2                      break;
+ 125   2                      
+ 126   2                      case 13:
+ 127   2                      CircleToCoordinate(&fig,figCircle,16);                          
+ 128   2                      break;
+ 129   2                      
+ 130   2                      case 14:
+ 131   2                              fig.radius  = 32;
+ 132   2                        circlemove(&fig,figCircle);
+ 133   2                      break;
+ 134   2                      
+ 135   2                      case 15:                
+ 136   2                      CircleToCoordinate(&fig,figCircle,16);          
+ 137   2                      break;
+ 138   2                      
+ 139   2                      case 16:        
+ 140   2                      circlemove(&fig,figSquare1);            
+ 141   2                      break;
+ 142   2                      
+ 143   2                      case 17:
+ 144   2                      CircleToCoordinate(&fig,figSquare1,4);  
+ 145   2                      break;
+ 146   2                      
+ 147   2                      case 18:
+ 148   2                      circlemove(&fig,figSquare2);                                            
+ 149   2                      break;
+ 150   2                      
+ 151   2                      case 19:
+ 152   2                      CircleToCoordinate(&fig,figSquare2,4);                          
+ 153   2                      break;
+ 154   2                      
+ 155   2                      case 20:
+ 156   2                              
+ 157   2                      circlemove(&fig,figCircle);     
+ 158   2                      fig.nSeries  = 9;
+ 159   2                      break;
+ 160   2                              
+ 161   2                              
+ 162   2                      default:break;
+ 163   2              }
+ 164   1              
+ 165   1              drawfigure(&fig);
+ 166   1      }
+ 167          
+ 168          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1212    ----
+   CONSTANT SIZE    =    288    ----
+C51 COMPILER V9.01   DRAW                                                                  10/02/2018 17:03:47 PAGE 4   
+
+   XDATA SIZE       =   ----       9
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

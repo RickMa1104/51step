@@ -1,0 +1,1 @@
+"wifi\localinterface.c" LARGE BROWSE INCDIR(.\Include;.\wifi) DEFINE (FOSC_160000) DEBUG OBJECTEXTEND PRINT(.\LST\localinterface.lst) OBJECT(.\Output\localinterface.obj)

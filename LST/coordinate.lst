@@ -1,0 +1,154 @@
+C51 COMPILER V9.01   COORDINATE                                                            09/15/2018 17:37:15 PAGE 1   
+
+
+C51 COMPILER V9.01, COMPILATION OF MODULE COORDINATE
+OBJECT MODULE PLACED IN .\Output\coordinate.obj
+COMPILER INVOKED BY: C:\Keil_v4\C51\BIN\C51.EXE Code\coordinate.c LARGE BROWSE INCDIR(.\Include;.\wifi;.\Code) DEFINE(FO
+                    -SC_160000) DEBUG OBJECTEXTEND PRINT(.\LST\coordinate.lst) OBJECT(.\Output\coordinate.obj)
+
+line level    source
+
+   1          #include "coordinate.h"
+   2          
+   3          extern const float figCircle[16][3];
+   4          void toRelative( hfingure *fig)
+   5          {
+   6   1                      unsigned char i ;
+   7   1      
+   8   1                      for(i=0;i<fig->nfigpoint-1;i++)
+   9   1                      {                                       
+  10   2                                              fig->arrInfo[i][0] = (-fig->figbuff[i+1][0] + fig->figbuff[i][0]);
+  11   2                                              fig->arrInfo[i][1] = (-fig->figbuff[i+1][1] + fig->figbuff[i][1]);                                                      
+  12   2                      }
+  13   1      
+  14   1                      fig->arrInfo[fig->nfigpoint-1][0] = (-fig->figbuff[0][0]+fig->figbuff[fig->nfigpoint-1][0]);
+  15   1                      fig->arrInfo[fig->nfigpoint-1][1] = (-fig->figbuff[0][1]+fig->figbuff[fig->nfigpoint-1][1]);
+  16   1                      
+  17   1              radiusToSpeed(fig);
+  18   1      }
+  19          
+  20          
+  21          void DirectToRelative( hfingure *fig,const signed int src[][3],unsigned char n)
+  22          {
+  23   1      
+  24   1                      unsigned char i;
+  25   1                      fig->nfigpoint = n;             
+  26   1                      for(i=0;i<n-1;i++)
+  27   1                      {       
+  28   2                              fig->arrInfo[i][0] = -src[i+1][0] + src[i][0];
+  29   2                              fig->arrInfo[i][1] = -src[i+1][1] + src[i][1];                  
+  30   2                      }       
+  31   1      
+  32   1                      fig->arrInfo[n-1][0] = -src[0][0] + src[n-1][0];
+  33   1                      fig->arrInfo[n-1][1] = -src[0][1] + src[n-1][1];                
+  34   1                      
+  35   1                      if(fig->nCurrentCircle<30)
+  36   1                      {
+  37   2                              fig->nCurrentCircle++;
+  38   2                      } 
+  39   1                      else
+  40   1                      {
+  41   2                              fig->nCurrentCircle = 0;
+  42   2                              fig->nSeries++;
+  43   2                              
+  44   2                      }
+  45   1                      
+  46   1                       radiusToSpeed(fig);
+  47   1      }
+  48          
+  49          void CircleToCoordinate( hfingure *fig,const float src[][3],unsigned char n)
+  50          {
+  51   1      
+  52   1              unsigned char i;
+  53   1              for(i=0;i < n;i++)
+  54   1              {       
+C51 COMPILER V9.01   COORDINATE                                                            09/15/2018 17:37:15 PAGE 2   
+
+  55   2                      fig->figbuff[i][0] = src[i][0]*fig->radius + fig->xcenter;
+  56   2                      fig->figbuff[i][1] = src[i][1]*fig->radius + fig->ycenter;                      
+  57   2              }       
+  58   1              fig->nfigpoint = n;     
+  59   1        toRelative(fig);
+  60   1              
+  61   1              if(fig->nCurrentCircle<30)
+  62   1              {
+  63   2                      fig->nCurrentCircle++;
+  64   2              } 
+  65   1              else
+  66   1              {
+  67   2                      fig->nCurrentCircle = 0;
+  68   2                      fig->nSeries++;
+  69   2              }
+  70   1      }
+  71          
+  72          
+  73          
+  74          void movein(hfingure *fig)
+  75          {
+  76   1                                              
+  77   1              fig->arrInfo[0][0] = (-fig->interface[0] + fig->preinterface[0]);                       
+  78   1              fig->arrInfo[0][1] = (-fig->interface[1] + fig->preinterface[1]);                                       
+  79   1      
+  80   1      }
+  81          
+  82          void circlemove(hfingure *fig,const float pos[][3])
+  83          {
+  84   1              
+  85   1                      fig->nfigpoint = 1;
+  86   1              
+  87   1                      fig->preinterface[0] = fig->interface[0] ;
+  88   1                      fig->preinterface[1] = fig->interface[1] ;
+  89   1      
+  90   1                      fig->interface[0] = pos[0][0]*fig->radius + fig->xcenter;
+  91   1                      fig->interface[1] = pos[0][1]*fig->radius + fig->ycenter;       
+  92   1              
+  93   1              movein(fig);
+  94   1              
+  95   1                      fig->nSeries++; 
+  96   1      }
+  97          
+  98          void pointmove(hfingure *fig,const signed int pos[][3])
+  99          {
+ 100   1                      fig->nfigpoint = 1;
+ 101   1              
+ 102   1                      fig->preinterface[0] = fig->interface[0] ;
+ 103   1                      fig->preinterface[1] = fig->interface[1] ;
+ 104   1      
+ 105   1                      fig->interface[0] = pos[0][0];
+ 106   1                      fig->interface[1] = pos[0][1];  
+ 107   1      
+ 108   1                      movein(fig);    
+ 109   1                      fig->nSeries++;
+ 110   1                      
+ 111   1      }
+ 112          
+ 113          
+ 114          void radiusToSpeed(hfingure *fig)
+ 115          {
+ 116   1      
+C51 COMPILER V9.01   COORDINATE                                                            09/15/2018 17:37:15 PAGE 3   
+
+ 117   1        if(fig->radius >= 20)
+ 118   1        {
+ 119   2              fig->speedref = 9; 
+ 120   2        }else
+ 121   1        {
+ 122   2              fig->speedref = 9; 
+ 123   2      
+ 124   2        }
+ 125   1              
+ 126   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1547    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----      32
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
